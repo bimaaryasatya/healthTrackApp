@@ -99,15 +99,15 @@ public class login extends javax.swing.JFrame {
                 jTextField1ActionPerformed(evt);
             }
         });
-        jPanel2.add(jTextField1, new org.netbeans.lib.awtextra.AbsoluteConstraints(95, 112, 200, -1));
+        jPanel2.add(jTextField1, new org.netbeans.lib.awtextra.AbsoluteConstraints(105, 112, 190, -1));
 
         jLabel2.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
         jLabel2.setText("Username:");
-        jPanel2.add(jLabel2, new org.netbeans.lib.awtextra.AbsoluteConstraints(32, 118, -1, -1));
+        jPanel2.add(jLabel2, new org.netbeans.lib.awtextra.AbsoluteConstraints(40, 120, -1, -1));
 
         jLabel3.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
         jLabel3.setText("Password:");
-        jPanel2.add(jLabel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(35, 158, -1, -1));
+        jPanel2.add(jLabel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(40, 150, -1, -1));
 
         masuk.setText("Masuk");
         masuk.addActionListener(new java.awt.event.ActionListener() {
@@ -132,6 +132,11 @@ public class login extends javax.swing.JFrame {
 
         jComboBox1.setForeground(new java.awt.Color(255, 255, 255));
         jComboBox1.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Bahasa Indonesia", "English", "Korean", "Chinese", "Japanese", "Russian" }));
+        jComboBox1.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jComboBox1ActionPerformed(evt);
+            }
+        });
         jPanel1.add(jComboBox1, new org.netbeans.lib.awtextra.AbsoluteConstraints(602, 20, 140, -1));
 
         jLabel4.setFont(new java.awt.Font("Segoe UI", 1, 14)); // NOI18N
@@ -203,6 +208,11 @@ public class login extends javax.swing.JFrame {
         }
     }//GEN-LAST:event_masukActionPerformed
 
+    private void jComboBox1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jComboBox1ActionPerformed
+        String selectedLanguage = (String) jComboBox1.getSelectedItem();
+        updateLanguage(selectedLanguage);
+    }//GEN-LAST:event_jComboBox1ActionPerformed
+
     /**
      * @param args the command line arguments
      */
@@ -261,11 +271,6 @@ public class login extends javax.swing.JFrame {
             sb.append(String.format("%02x", b & 0xff));
         }
         return sb.toString();
-    }
-
-    private void jComboBox1ActionPerformed(java.awt.event.ActionEvent evt) {
-        String selectedLanguage = (String) jComboBox1.getSelectedItem();
-        updateLanguage(selectedLanguage);
     }
 
     private void updateLanguage(String language) {
