@@ -4,17 +4,61 @@
  */
 package com.mycompany.healthtrackapp;
 
+import java.awt.Font;
+import java.awt.FontFormatException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HashMap;
+import java.util.Map;
+import javax.swing.JOptionPane;
+
 /**
  *
  * @author bimazznxt
  */
 public class login extends javax.swing.JFrame {
 
+    private static final Map<String, String> USERS = new HashMap<>();
+    private Font multiLanguageFont; // Variabel untuk menyimpan font
+
     /**
      * Creates new form login
      */
     public login() {
+        // Coba muat font kustom saat inisialisasi
+        try {
+            InputStream is = getClass().getResourceAsStream("/fonts/NotoSans-Regular.ttf"); // Sesuaikan path jika berbeda
+            if (is != null) {
+                multiLanguageFont = Font.createFont(Font.TRUETYPE_FONT, is).deriveFont(Font.PLAIN, 14f); // Ukuran font 14
+                is.close();
+            } else {
+                System.err.println("Font file not found: /fonts/NotoSans-Regular.ttf");
+                // Gunakan font default jika font kustom tidak ditemukan
+                multiLanguageFont = new Font("SansSerif", Font.PLAIN, 14);
+            }
+        } catch (FontFormatException | IOException e) {
+            System.err.println("Error loading font: " + e.getMessage());
+            multiLanguageFont = new Font("SansSerif", Font.PLAIN, 14); // Fallback ke font default
+        }
         initComponents();
+        applyFontToComponents();
+        updateLanguage("Bahasa Indonesia");
+    }
+
+    private void applyFontToComponents() {
+        if (multiLanguageFont != null) {
+            jLabel1.setFont(multiLanguageFont);
+            jLabel2.setFont(multiLanguageFont);
+            jLabel3.setFont(multiLanguageFont);
+            jLabel4.setFont(multiLanguageFont);
+            jTextField1.setFont(multiLanguageFont);
+            jPasswordField1.setFont(multiLanguageFont);
+            masuk.setFont(multiLanguageFont);
+            buatAkun.setFont(multiLanguageFont);
+            jComboBox1.setFont(multiLanguageFont);
+        }
     }
 
     /**
@@ -32,9 +76,9 @@ public class login extends javax.swing.JFrame {
         jTextField1 = new javax.swing.JTextField();
         jLabel2 = new javax.swing.JLabel();
         jLabel3 = new javax.swing.JLabel();
-        jButton1 = new javax.swing.JButton();
+        masuk = new javax.swing.JButton();
         jPasswordField1 = new javax.swing.JPasswordField();
-        jButton2 = new javax.swing.JButton();
+        buatAkun = new javax.swing.JButton();
         jComboBox1 = new javax.swing.JComboBox<>();
         jLabel4 = new javax.swing.JLabel();
 
@@ -65,14 +109,24 @@ public class login extends javax.swing.JFrame {
         jLabel3.setText("Password:");
         jPanel2.add(jLabel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(35, 158, -1, -1));
 
-        jButton1.setText("Masuk");
-        jPanel2.add(jButton1, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 290, 260, -1));
+        masuk.setText("Masuk");
+        masuk.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                masukActionPerformed(evt);
+            }
+        });
+        jPanel2.add(masuk, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 290, 260, -1));
 
         jPasswordField1.setText("jPasswordField1");
         jPanel2.add(jPasswordField1, new org.netbeans.lib.awtextra.AbsoluteConstraints(100, 150, 190, -1));
 
-        jButton2.setText("Buat Akun");
-        jPanel2.add(jButton2, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 261, 260, -1));
+        buatAkun.setText("Buat Akun");
+        buatAkun.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                buatAkunActionPerformed(evt);
+            }
+        });
+        jPanel2.add(buatAkun, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 261, 260, -1));
 
         jPanel1.add(jPanel2, new org.netbeans.lib.awtextra.AbsoluteConstraints(220, 80, 320, 350));
 
@@ -94,6 +148,60 @@ public class login extends javax.swing.JFrame {
     private void jTextField1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextField1ActionPerformed
         // TODO add your handling code here:
     }//GEN-LAST:event_jTextField1ActionPerformed
+
+    private void buatAkunActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_buatAkunActionPerformed
+        String username = jTextField1.getText();
+        String password = new String(jPasswordField1.getPassword());
+
+        if (username.isEmpty() || password.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Username dan password tidak boleh kosong.", "Pendaftaran Gagal", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        if (USERS.containsKey(username)) {
+            JOptionPane.showMessageDialog(this, "Username sudah ada. Silakan pilih username lain.", "Pendaftaran Gagal", JOptionPane.WARNING_MESSAGE);
+        } else {
+            try {
+                String hashedPassword = hashPassword(password);
+                USERS.put(username, hashedPassword);
+                JOptionPane.showMessageDialog(this, "Akun berhasil dibuat!", "Pendaftaran Berhasil", JOptionPane.INFORMATION_MESSAGE);
+                jTextField1.setText("");
+                jPasswordField1.setText("");
+            } catch (NoSuchAlgorithmException ex) {
+                JOptionPane.showMessageDialog(this, "Terjadi kesalahan saat mengenkripsi password.", "Error", JOptionPane.ERROR_MESSAGE);
+                ex.printStackTrace();
+            }
+        }
+    }//GEN-LAST:event_buatAkunActionPerformed
+
+    private void masukActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_masukActionPerformed
+        String username = jTextField1.getText();
+        String password = new String(jPasswordField1.getPassword());
+
+        if (username.isEmpty() || password.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Username dan password tidak boleh kosong.", "Login Gagal", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        if (USERS.containsKey(username)) {
+            try {
+                String hashedPassword = hashPassword(password);
+                if (hashedPassword.equals(USERS.get(username))) {
+                    JOptionPane.showMessageDialog(this, "Login Berhasil!", "Selamat Datang", JOptionPane.INFORMATION_MESSAGE);
+                    // Membuka main UI
+                    new UI().setVisible(true);
+                    this.dispose();
+                } else {
+                    JOptionPane.showMessageDialog(this, "Password salah.", "Login Gagal", JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (NoSuchAlgorithmException ex) {
+                JOptionPane.showMessageDialog(this, "Terjadi kesalahan saat otentikasi.", "Error", JOptionPane.ERROR_MESSAGE);
+                ex.printStackTrace();
+            }
+        } else {
+            JOptionPane.showMessageDialog(this, "Username tidak ditemukan.", "Login Gagal", JOptionPane.ERROR_MESSAGE);
+        }
+    }//GEN-LAST:event_masukActionPerformed
 
     /**
      * @param args the command line arguments
@@ -131,8 +239,7 @@ public class login extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton jButton1;
-    private javax.swing.JButton jButton2;
+    private javax.swing.JButton buatAkun;
     private javax.swing.JComboBox<String> jComboBox1;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
@@ -142,5 +249,68 @@ public class login extends javax.swing.JFrame {
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPasswordField jPasswordField1;
     private javax.swing.JTextField jTextField1;
+    private javax.swing.JButton masuk;
     // End of variables declaration//GEN-END:variables
+
+    private String hashPassword(String password) throws NoSuchAlgorithmException {
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        md.update(password.getBytes());
+        byte[] digest = md.digest();
+        StringBuilder sb = new StringBuilder();
+        for (byte b : digest) {
+            sb.append(String.format("%02x", b & 0xff));
+        }
+        return sb.toString();
+    }
+
+    private void jComboBox1ActionPerformed(java.awt.event.ActionEvent evt) {
+        String selectedLanguage = (String) jComboBox1.getSelectedItem();
+        updateLanguage(selectedLanguage);
+    }
+
+    private void updateLanguage(String language) {
+        // This is a basic example. For many languages, use ResourceBundle.
+        switch (language) {
+            case "Bahasa Indonesia":
+                jLabel1.setText("Login");
+                jLabel2.setText("Username:");
+                jLabel3.setText("Password:");
+                masuk.setText("Masuk");
+                buatAkun.setText("Buat Akun");
+                jLabel4.setText("Pilih Bahasa:");
+                break;
+            case "English":
+                jLabel1.setText("Login");
+                jLabel2.setText("Username:");
+                jLabel3.setText("Password:");
+                masuk.setText("Sign In");
+                buatAkun.setText("Create Account");
+                jLabel4.setText("Select Language:");
+                break;
+            case "Korean":
+                jLabel1.setText("로그인");
+                jLabel2.setText("사용자 이름:");
+                jLabel3.setText("비밀번호:");
+                masuk.setText("로그인");
+                buatAkun.setText("계정 생성");
+                jLabel4.setText("언어 선택:");
+                break;
+            case "Chinese":
+                jLabel1.setText("登录");
+                jLabel2.setText("用户名:");
+                jLabel3.setText("密码:");
+                masuk.setText("登录");
+                buatAkun.setText("创建账户");
+                jLabel4.setText("选择语言:");
+                break;
+            case "Russian":
+                jLabel1.setText("Вход");
+                jLabel2.setText("Имя пользователя:");
+                jLabel3.setText("Пароль:");
+                masuk.setText("Войти");
+                buatAkun.setText("Создать аккаунт");
+                jLabel4.setText("Выбрать язык:");
+                break;
+        }
+    }
 }

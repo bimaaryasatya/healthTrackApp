@@ -4,17 +4,114 @@
  */
 package com.mycompany.healthtrackapp;
 
+import java.awt.Font;
+import java.awt.FontFormatException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import javax.swing.DefaultListModel;
+import javax.swing.JOptionPane;
+
 /**
  *
  * @author bimazznxt
  */
 public class UI extends javax.swing.JFrame {
 
+    private DefaultListModel<String> healthHistoryListModel;
+    private List<HealthData> healthRecords;
+    private Font multiLanguageFont; // Variabel untuk menyimpan font
+
     /**
      * Creates new form UI
      */
     public UI() {
+        // Coba muat font kustom saat inisialisasi
+        try {
+            InputStream is = getClass().getResourceAsStream("/fonts/NotoSans-Regular.ttf"); // Sesuaikan path jika berbeda
+            if (is != null) {
+                multiLanguageFont = Font.createFont(Font.TRUETYPE_FONT, is).deriveFont(Font.PLAIN, 14f); // Ukuran font 14
+                is.close();
+            } else {
+                System.err.println("Font file not found: /fonts/NotoSans-Regular.ttf");
+                // Gunakan font default jika font kustom tidak ditemukan
+                multiLanguageFont = new Font("SansSerif", Font.PLAIN, 14);
+            }
+        } catch (FontFormatException | IOException e) {
+            System.err.println("Error loading font: " + e.getMessage());
+            multiLanguageFont = new Font("SansSerif", Font.PLAIN, 14); // Fallback ke font default
+        }
         initComponents();
+        // Terapkan font ke komponen yang relevan setelah initComponents()
+        applyFontToComponents();
+        healthHistoryListModel = new DefaultListModel<>();
+        jList1.setModel(healthHistoryListModel);
+        healthRecords = new ArrayList<>();
+        updateLanguage("Bahasa Indonesia"); // Set initial language
+    }
+
+    private void applyFontToComponents() {
+        if (multiLanguageFont != null) {
+            jLabel1.setFont(multiLanguageFont.deriveFont(Font.BOLD, 24f)); // Judul utama lebih besar dan tebal
+            jLabel2.setFont(multiLanguageFont);
+            jLabel3.setFont(multiLanguageFont);
+            jLabel4.setFont(multiLanguageFont);
+            jLabel5.setFont(multiLanguageFont);
+            jLabel6.setFont(multiLanguageFont);
+            jLabel7.setFont(multiLanguageFont);
+            jComboBox1.setFont(multiLanguageFont);
+            jList1.setFont(multiLanguageFont);
+            jTextField1.setFont(multiLanguageFont);
+            jTextField2.setFont(multiLanguageFont);
+            jTextField3.setFont(multiLanguageFont);
+            jTextField4.setFont(multiLanguageFont);
+            buat.setFont(multiLanguageFont);
+            simpan.setFont(multiLanguageFont);
+            perbarui.setFont(multiLanguageFont);
+            hapus.setFont(multiLanguageFont);
+        }
+    }
+
+    // Data model for health records
+    private static class HealthData {
+
+        String date;
+        String bloodPressure;
+        String oxygenLevel;
+        String weight;
+        String height;
+
+        public HealthData(String date, String bloodPressure, String oxygenLevel, String weight, String height) {
+            this.date = date;
+            this.bloodPressure = bloodPressure;
+            this.oxygenLevel = oxygenLevel;
+            this.weight = weight;
+            this.height = height;
+        }
+
+        public String getDate() {
+            return date;
+        }
+
+        public String getBloodPressure() {
+            return bloodPressure;
+        }
+
+        public String getOxygenLevel() {
+            return oxygenLevel;
+        }
+
+        public String getWeight() {
+            return weight;
+        }
+
+        public String getHeight() {
+            return height;
+        }
+
     }
 
     /**
@@ -34,14 +131,19 @@ public class UI extends javax.swing.JFrame {
         jScrollPane1 = new javax.swing.JScrollPane();
         jList1 = new javax.swing.JList<>();
         jLabel3 = new javax.swing.JLabel();
+        buat = new javax.swing.JButton();
         jPanel3 = new javax.swing.JPanel();
-        jButton1 = new javax.swing.JButton();
-        jButton2 = new javax.swing.JButton();
-        jButton3 = new javax.swing.JButton();
+        perbarui = new javax.swing.JButton();
+        hapus = new javax.swing.JButton();
         jLabel4 = new javax.swing.JLabel();
         jLabel5 = new javax.swing.JLabel();
         jLabel6 = new javax.swing.JLabel();
         jLabel7 = new javax.swing.JLabel();
+        jTextField1 = new javax.swing.JTextField();
+        jTextField2 = new javax.swing.JTextField();
+        jTextField3 = new javax.swing.JTextField();
+        jTextField4 = new javax.swing.JTextField();
+        simpan = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
@@ -52,6 +154,11 @@ public class UI extends javax.swing.JFrame {
         jLabel1.setText("Pemantau Kesehatan");
 
         jComboBox1.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Bahasa Indonesia", "English", "Japan", "Korean" }));
+        jComboBox1.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jComboBox1ActionPerformed(evt);
+            }
+        });
 
         jLabel2.setForeground(new java.awt.Color(0, 0, 0));
         jLabel2.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
@@ -93,11 +200,23 @@ public class UI extends javax.swing.JFrame {
             public String getElementAt(int i) { return strings[i]; }
         });
         jList1.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
+        jList1.addListSelectionListener(new javax.swing.event.ListSelectionListener() {
+            public void valueChanged(javax.swing.event.ListSelectionEvent evt) {
+                jList1ValueChanged(evt);
+            }
+        });
         jScrollPane1.setViewportView(jList1);
 
         jLabel3.setForeground(new java.awt.Color(51, 51, 51));
         jLabel3.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
         jLabel3.setText("Riwayat");
+
+        buat.setText("Buat Data Baru");
+        buat.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                buatActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
         jPanel2.setLayout(jPanel2Layout);
@@ -106,7 +225,9 @@ public class UI extends javax.swing.JFrame {
             .addComponent(jScrollPane1)
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jLabel3, javax.swing.GroupLayout.DEFAULT_SIZE, 179, Short.MAX_VALUE)
+                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jLabel3, javax.swing.GroupLayout.DEFAULT_SIZE, 179, Short.MAX_VALUE)
+                    .addComponent(buat, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap())
         );
         jPanel2Layout.setVerticalGroup(
@@ -115,21 +236,27 @@ public class UI extends javax.swing.JFrame {
                 .addGap(0, 11, Short.MAX_VALUE)
                 .addComponent(jLabel3)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 398, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 351, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(buat)
+                .addGap(12, 12, 12))
         );
 
         getContentPane().add(jPanel2, java.awt.BorderLayout.LINE_START);
 
-        jButton1.setText("Simpan Data Baru");
-        jButton1.addActionListener(new java.awt.event.ActionListener() {
+        perbarui.setText("Perbarui Data");
+        perbarui.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton1ActionPerformed(evt);
+                perbaruiActionPerformed(evt);
             }
         });
 
-        jButton2.setText("Perbarui Data");
-
-        jButton3.setText("Hapus");
+        hapus.setText("Hapus");
+        hapus.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                hapusActionPerformed(evt);
+            }
+        });
 
         jLabel4.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
         jLabel4.setText("Tekanan Darah:");
@@ -143,43 +270,65 @@ public class UI extends javax.swing.JFrame {
         jLabel7.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
         jLabel7.setText("Tinggi Badan:");
 
+        simpan.setText("Simpan");
+        simpan.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                simpanActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
         jPanel3.setLayout(jPanel3Layout);
         jPanel3Layout.setHorizontalGroup(
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel3Layout.createSequentialGroup()
-                .addContainerGap(268, Short.MAX_VALUE)
-                .addComponent(jButton1)
+                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, jPanel3Layout.createSequentialGroup()
+                        .addGap(107, 107, 107)
+                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                            .addComponent(jLabel4, javax.swing.GroupLayout.DEFAULT_SIZE, 100, Short.MAX_VALUE)
+                            .addComponent(jLabel5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jLabel6, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(jLabel7, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addComponent(jTextField4, javax.swing.GroupLayout.DEFAULT_SIZE, 286, Short.MAX_VALUE)
+                            .addComponent(jTextField3)
+                            .addComponent(jTextField2)
+                            .addComponent(jTextField1)))
+                    .addGroup(jPanel3Layout.createSequentialGroup()
+                        .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(simpan)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(perbarui)))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jButton2)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jButton3)
+                .addComponent(hapus)
                 .addGap(24, 24, 24))
-            .addGroup(jPanel3Layout.createSequentialGroup()
-                .addGap(107, 107, 107)
-                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(jLabel4, javax.swing.GroupLayout.DEFAULT_SIZE, 100, Short.MAX_VALUE)
-                    .addComponent(jLabel5, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jLabel6, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jLabel7, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         jPanel3Layout.setVerticalGroup(
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel3Layout.createSequentialGroup()
-                .addGap(46, 46, 46)
-                .addComponent(jLabel4)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jLabel5)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jLabel6)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jLabel7)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 267, Short.MAX_VALUE)
+                .addGap(43, 43, 43)
                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jButton1)
-                    .addComponent(jButton2)
-                    .addComponent(jButton3))
+                    .addComponent(jLabel4)
+                    .addComponent(jTextField1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel5)
+                    .addComponent(jTextField2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel6)
+                    .addComponent(jTextField3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel7)
+                    .addComponent(jTextField4, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 246, Short.MAX_VALUE)
+                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(perbarui)
+                    .addComponent(hapus)
+                    .addComponent(simpan))
                 .addGap(19, 19, 19))
         );
 
@@ -188,9 +337,103 @@ public class UI extends javax.swing.JFrame {
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
-        // TODO add your handling code here:
-    }//GEN-LAST:event_jButton1ActionPerformed
+    private void jComboBox1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jComboBox1ActionPerformed
+        String selectedLanguage = (String) jComboBox1.getSelectedItem();
+        updateLanguage(selectedLanguage);
+    }//GEN-LAST:event_jComboBox1ActionPerformed
+
+    private void hapusActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_hapusActionPerformed
+        int selectedIndex = jList1.getSelectedIndex();
+        if (selectedIndex == -1) {
+            JOptionPane.showMessageDialog(this, "Pilih data dari riwayat untuk dihapus.", "Peringatan", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        healthRecords.remove(selectedIndex);
+        healthHistoryListModel.remove(selectedIndex);
+
+        // Clear the text fields after deletion
+        jTextField1.setText("");
+        jTextField2.setText("");
+        jTextField3.setText("");
+        jTextField4.setText("");
+
+        JOptionPane.showMessageDialog(this, "Data kesehatan berhasil dihapus.", "Sukses", JOptionPane.INFORMATION_MESSAGE);
+    }//GEN-LAST:event_hapusActionPerformed
+
+    private void perbaruiActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_perbaruiActionPerformed
+        // Perbarui Data (Update Data)
+        int selectedIndex = jList1.getSelectedIndex();
+        if (selectedIndex == -1) {
+            JOptionPane.showMessageDialog(this, "Pilih data dari riwayat untuk diperbarui.", "Peringatan", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        String bloodPressure = jTextField1.getText();
+        String oxygenLevel = jTextField2.getText();
+        String weight = jTextField3.getText();
+        String height = jTextField4.getText();
+
+        if (bloodPressure.isEmpty() || oxygenLevel.isEmpty() || weight.isEmpty() || height.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Semua kolom harus diisi.", "Peringatan", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        HealthData recordToUpdate = healthRecords.get(selectedIndex);
+        recordToUpdate.bloodPressure = bloodPressure;
+        recordToUpdate.oxygenLevel = oxygenLevel;
+        recordToUpdate.weight = weight;
+        recordToUpdate.height = height;
+
+        JOptionPane.showMessageDialog(this, "Data kesehatan berhasil diperbarui.", "Sukses", JOptionPane.INFORMATION_MESSAGE);
+
+    }//GEN-LAST:event_perbaruiActionPerformed
+
+    private void jList1ValueChanged(javax.swing.event.ListSelectionEvent evt) {//GEN-FIRST:event_jList1ValueChanged
+        // Handle selection change in history list
+        if (!evt.getValueIsAdjusting()) {
+            int selectedIndex = jList1.getSelectedIndex();
+            if (selectedIndex != -1) {
+                HealthData selectedData = healthRecords.get(selectedIndex);
+                jTextField1.setText(selectedData.bloodPressure);
+                jTextField2.setText(selectedData.oxygenLevel);
+                jTextField3.setText(selectedData.weight);
+                jTextField4.setText(selectedData.height);
+            }
+        }
+    }//GEN-LAST:event_jList1ValueChanged
+
+    private void simpanActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_simpanActionPerformed
+        // Simpan (Save)
+        String bloodPressure = jTextField1.getText();
+        String oxygenLevel = jTextField2.getText();
+        String weight = jTextField3.getText();
+        String height = jTextField4.getText();
+
+        if (bloodPressure.isEmpty() || oxygenLevel.isEmpty() || weight.isEmpty() || height.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Semua kolom harus diisi.", "Peringatan", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        String currentDate = sdf.format(new Date());
+
+        HealthData newRecord = new HealthData(currentDate, bloodPressure, oxygenLevel, weight, height);
+        healthRecords.add(newRecord);
+        healthHistoryListModel.addElement(currentDate); // Add date to the list display
+
+        JOptionPane.showMessageDialog(this, "Data kesehatan berhasil disimpan.", "Sukses", JOptionPane.INFORMATION_MESSAGE);
+
+    }//GEN-LAST:event_simpanActionPerformed
+
+    private void buatActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_buatActionPerformed
+        // Buat Data Baru (Create New Data)
+        jTextField1.setText(""); // Clear Blood Pressure
+        jTextField2.setText(""); // Clear Oxygen Level
+        jTextField3.setText(""); // Clear Weight
+        jTextField4.setText(""); // Clear Height
+        jList1.clearSelection(); // Deselect any history item
+    }//GEN-LAST:event_buatActionPerformed
 
     /**
      * @param args the command line arguments
@@ -228,9 +471,8 @@ public class UI extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton jButton1;
-    private javax.swing.JButton jButton2;
-    private javax.swing.JButton jButton3;
+    private javax.swing.JButton buat;
+    private javax.swing.JButton hapus;
     private javax.swing.JComboBox<String> jComboBox1;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
@@ -244,5 +486,95 @@ public class UI extends javax.swing.JFrame {
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel3;
     private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JTextField jTextField1;
+    private javax.swing.JTextField jTextField2;
+    private javax.swing.JTextField jTextField3;
+    private javax.swing.JTextField jTextField4;
+    private javax.swing.JButton perbarui;
+    private javax.swing.JButton simpan;
     // End of variables declaration//GEN-END:variables
+
+    private void updateLanguage(String language) {
+        // This is a basic example. For many languages, use ResourceBundle.
+        switch (language) {
+            case "Bahasa Indonesia":
+                jLabel1.setText("Pemantau Kesehatan");
+                jLabel2.setText("Pilihan Bahasa");
+                jLabel3.setText("Riwayat");
+                buat.setText("Buat Data Baru");
+                jLabel4.setText("Tekanan Darah:");
+                jLabel5.setText("Kadar Oksigen:");
+                jLabel6.setText("Berat Badan:");
+                jLabel7.setText("Tinggi Badan:");
+                simpan.setText("Simpan");
+                perbarui.setText("Perbarui Data");
+                hapus.setText("Hapus");
+                break;
+            case "English":
+                jLabel1.setText("Health Monitor");
+                jLabel2.setText("Language Option");
+                jLabel3.setText("History");
+                buat.setText("Create New Data");
+                jLabel4.setText("Blood Pressure:");
+                jLabel5.setText("Oxygen Level:");
+                jLabel6.setText("Weight:");
+                jLabel7.setText("Height:");
+                simpan.setText("Save");
+                perbarui.setText("Update Data");
+                hapus.setText("Delete");
+                break;
+            case "Japan": // Assuming "Japan" means Japanese
+                jLabel1.setText("健康トラッカー");
+                jLabel2.setText("言語オプション");
+                jLabel3.setText("履歴");
+                buat.setText("新規データ作成");
+                jLabel4.setText("血圧:");
+                jLabel5.setText("酸素レベル:");
+                jLabel6.setText("体重:");
+                jLabel7.setText("身長:");
+                simpan.setText("保存");
+                perbarui.setText("データ更新");
+                hapus.setText("削除");
+                break;
+            case "Korean":
+                jLabel1.setText("건강 추적기");
+                jLabel2.setText("언어 옵션");
+                jLabel3.setText("기록");
+                buat.setText("새 데이터 생성");
+                jLabel4.setText("혈압:");
+                jLabel5.setText("산소 농도:");
+                jLabel6.setText("체중:");
+                jLabel7.setText("신장:");
+                simpan.setText("저장");
+                perbarui.setText("데이터 업데이트");
+                hapus.setText("삭제");
+                break;
+            case "Chinese":
+                jLabel1.setText("健康追踪器");
+                jLabel2.setText("语言选项");
+                jLabel3.setText("历史记录");
+                buat.setText("创建新数据");
+                jLabel4.setText("血压:");
+                jLabel5.setText("氧气水平:");
+                jLabel6.setText("体重:");
+                jLabel7.setText("身高:");
+                simpan.setText("保存");
+                perbarui.setText("更新数据");
+                hapus.setText("删除");
+                break;
+            case "Russian":
+                jLabel1.setText("Отслеживание здоровья");
+                jLabel2.setText("Выбор языка");
+                jLabel3.setText("История");
+                buat.setText("Создать новую запись");
+                jLabel4.setText("Артериальное давление:");
+                jLabel5.setText("Уровень кислорода:");
+                jLabel6.setText("Вес:");
+                jLabel7.setText("Рост:");
+                simpan.setText("Сохранить");
+                perbarui.setText("Обновить данные");
+                hapus.setText("Удалить");
+                break;
+        }
+    }
 }
