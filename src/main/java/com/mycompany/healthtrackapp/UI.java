@@ -4,6 +4,17 @@
  */
 package com.mycompany.healthtrackapp;
 
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import static com.mongodb.client.model.Filters.eq;
+import static com.mongodb.client.model.Filters.and;
+import static com.mongodb.client.model.Updates.set;
+import org.bson.Document;
+import org.bson.types.ObjectId;
+import com.mongodb.client.result.DeleteResult;
+import java.util.Iterator;
 import java.awt.Font;
 import java.awt.FontFormatException;
 import java.io.IOException;
@@ -14,6 +25,7 @@ import java.util.Date;
 import java.util.List;
 import javax.swing.DefaultListModel;
 import javax.swing.JOptionPane;
+import org.bson.types.ObjectId;
 
 /**
  *
@@ -22,16 +34,21 @@ import javax.swing.JOptionPane;
 public class UI extends javax.swing.JFrame {
 
     private DefaultListModel<String> healthHistoryListModel;
-    private List<HealthData> healthRecords;
     private Font multiLanguageFont; // Variabel untuk menyimpan font
+    private MongoCollection<Document> healthRecordsCollection;
+    private ObjectId currentUserId; // To store the logged-in user's ID
 
     /**
      * Creates new form UI
      */
-    public UI() {
+    public UI(ObjectId userId) {
+        this.currentUserId = userId;
         // Coba muat font kustom saat inisialisasi
         try {
             InputStream is = getClass().getResourceAsStream("/fonts/NotoSans-Regular.ttf"); // Sesuaikan path jika berbeda
+            MongoClient mongoClient = MongoClients.create("mongodb://localhost:27017"); // Your MongoDB connection string
+            MongoDatabase database = mongoClient.getDatabase("UAS"); // Your database name
+            healthRecordsCollection = database.getCollection("healthrecords");
             if (is != null) {
                 multiLanguageFont = Font.createFont(Font.TRUETYPE_FONT, is).deriveFont(Font.PLAIN, 14f); // Ukuran font 14
                 is.close();
@@ -41,6 +58,8 @@ public class UI extends javax.swing.JFrame {
                 multiLanguageFont = new Font("SansSerif", Font.PLAIN, 14);
             }
         } catch (FontFormatException | IOException e) {
+            System.err.println("Error connecting to MongoDB in UI: " + e.getMessage());
+            JOptionPane.showMessageDialog(this, "Failed to connect to database for health data.", "Error", JOptionPane.ERROR_MESSAGE);
             System.err.println("Error loading font: " + e.getMessage());
             multiLanguageFont = new Font("SansSerif", Font.PLAIN, 14); // Fallback ke font default
         }
@@ -49,7 +68,7 @@ public class UI extends javax.swing.JFrame {
         applyFontToComponents();
         healthHistoryListModel = new DefaultListModel<>();
         jList1.setModel(healthHistoryListModel);
-        healthRecords = new ArrayList<>();
+        loadHealthRecords();
         updateLanguage("Bahasa Indonesia"); // Set initial language
     }
 
@@ -361,62 +380,144 @@ public class UI extends javax.swing.JFrame {
             return;
         }
 
-        healthRecords.remove(selectedIndex);
-        healthHistoryListModel.remove(selectedIndex);
+        try {
+            // Get the full text of the selected item from the list model
+            String selectedItemText = healthHistoryListModel.getElementAt(selectedIndex);
 
-        // Clear the text fields after deletion
-        jTextField1.setText("");
-        jTextField2.setText("");
-        jTextField3.setText("");
-        jTextField4.setText("");
+            // Extract the date string. It's the part before " - "
+            String dateString = selectedItemText.substring(0, selectedItemText.indexOf(" - "));
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            Date recordDate = sdf.parse(dateString); // Parse the date string into a Date object
 
-        JOptionPane.showMessageDialog(this, "Data kesehatan berhasil dihapus.", "Sukses", JOptionPane.INFORMATION_MESSAGE);
+            // Delete the document from MongoDB based on userId and the exact date
+            DeleteResult result = healthRecordsCollection.deleteOne(
+                    and(eq("userId", currentUserId), eq("date", recordDate))
+            );
+
+            if (result.getDeletedCount() > 0) {
+                JOptionPane.showMessageDialog(this, "Data kesehatan berhasil dihapus.", "Sukses", JOptionPane.INFORMATION_MESSAGE);
+                // Clear the text fields after successful deletion
+                jTextField1.setText("");
+                jTextField2.setText("");
+                jTextField3.setText("");
+                jTextField4.setText("");
+                loadHealthRecords(); // Refresh the list to reflect the deletion
+            } else {
+                JOptionPane.showMessageDialog(this, "Data tidak ditemukan atau tidak dapat dihapus.", "Peringatan", JOptionPane.WARNING_MESSAGE);
+            }
+        } catch (java.text.ParseException e) {
+            System.err.println("Error parsing date for deletion: " + e.getMessage());
+            JOptionPane.showMessageDialog(this, "Error parsing date from list for deletion.", "Error", JOptionPane.ERROR_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Terjadi kesalahan saat menghapus data kesehatan: " + ex.getMessage(), "Error Database", JOptionPane.ERROR_MESSAGE);
+            ex.printStackTrace(); // Print full stack trace for debugging
+        }
     }//GEN-LAST:event_hapusActionPerformed
 
     private void perbaruiActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_perbaruiActionPerformed
-        // Perbarui Data (Update Data)
         int selectedIndex = jList1.getSelectedIndex();
         if (selectedIndex == -1) {
             JOptionPane.showMessageDialog(this, "Pilih data dari riwayat untuk diperbarui.", "Peringatan", JOptionPane.WARNING_MESSAGE);
             return;
         }
-
         String bloodPressure = jTextField1.getText();
         String oxygenLevel = jTextField2.getText();
         String weight = jTextField3.getText();
         String height = jTextField4.getText();
 
         if (bloodPressure.isEmpty() || oxygenLevel.isEmpty() || weight.isEmpty() || height.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Semua kolom harus diisi.", "Peringatan", JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Semua kolom data harus diisi untuk pembaruan.", "Pembaruan Gagal", JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        HealthData recordToUpdate = healthRecords.get(selectedIndex);
-        recordToUpdate.bloodPressure = bloodPressure;
-        recordToUpdate.oxygenLevel = oxygenLevel;
-        recordToUpdate.weight = weight;
-        recordToUpdate.height = height;
+        // Ensure currentUserId is not null before using it
+        if (currentUserId == null) {
+            JOptionPane.showMessageDialog(this, "Tidak ada pengguna yang login. Tidak dapat memperbarui data.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
 
-        JOptionPane.showMessageDialog(this, "Data kesehatan berhasil diperbarui.", "Sukses", JOptionPane.INFORMATION_MESSAGE);
+        try {
+            String selectedItemText = healthHistoryListModel.getElementAt(selectedIndex);
+            String dateString = selectedItemText.substring(0, selectedItemText.indexOf(" - "));
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            Date recordDate = sdf.parse(dateString);
 
+            Document updatedDocument = new Document("bloodPressure", bloodPressure)
+                    .append("oxygenLevel", oxygenLevel)
+                    .append("weight", weight)
+                    .append("height", height);
+
+            healthRecordsCollection.updateOne(
+                    and(eq("userId", currentUserId), eq("date", recordDate)),
+                    new Document("$set", updatedDocument)
+            );
+
+            JOptionPane.showMessageDialog(this, "Data kesehatan berhasil diperbarui.", "Sukses", JOptionPane.INFORMATION_MESSAGE);
+            loadHealthRecords(); // Refresh the list
+        } catch (java.text.ParseException e) {
+            System.err.println("Error parsing date for update: " + e.getMessage());
+            JOptionPane.showMessageDialog(this, "Error parsing date from list for update.", "Error", JOptionPane.ERROR_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Terjadi kesalahan saat memperbarui data kesehatan.", "Error Database", JOptionPane.ERROR_MESSAGE);
+            ex.printStackTrace();
+        }
     }//GEN-LAST:event_perbaruiActionPerformed
 
     private void jList1ValueChanged(javax.swing.event.ListSelectionEvent evt) {//GEN-FIRST:event_jList1ValueChanged
-        // Handle selection change in history list
-        if (!evt.getValueIsAdjusting()) {
+        if (!evt.getValueIsAdjusting()) { // Ensure selection is final
             int selectedIndex = jList1.getSelectedIndex();
             if (selectedIndex != -1) {
-                HealthData selectedData = healthRecords.get(selectedIndex);
-                jTextField1.setText(selectedData.bloodPressure);
-                jTextField2.setText(selectedData.oxygenLevel);
-                jTextField3.setText(selectedData.weight);
-                jTextField4.setText(selectedData.height);
+                String selectedItemText = healthHistoryListModel.getElementAt(selectedIndex);
+                // The format is "yyyy-MM-dd HH:mm:ss - BP: x, O2: y, W: z, H: a"
+                // We need to extract the part after " - "
+                String[] parts = selectedItemText.split(" - ", 2); // Limit split to 2 to handle date possibly containing " - "
+
+                if (parts.length > 1) {
+                    String dataPart = parts[1]; // This will be "BP: x, O2: y, W: z, H: a"
+
+                    String bloodPressure = "";
+                    String oxygenLevel = "";
+                    String weight = "";
+                    String height = "";
+
+                    // Split the dataPart into individual key-value strings
+                    String[] detailParts = dataPart.split(", ");
+
+                    for (String detail : detailParts) {
+                        if (detail.startsWith("BP: ")) {
+                            bloodPressure = detail.substring("BP: ".length()).trim();
+                        } else if (detail.startsWith("O2: ")) {
+                            oxygenLevel = detail.substring("O2: ".length()).trim();
+                        } else if (detail.startsWith("W: ")) {
+                            weight = detail.substring("W: ".length()).trim();
+                        } else if (detail.startsWith("H: ")) {
+                            height = detail.substring("H: ".length()).trim();
+                        }
+                    }
+
+                    jTextField1.setText(bloodPressure);
+                    jTextField2.setText(oxygenLevel);
+                    jTextField3.setText(weight);
+                    jTextField4.setText(height);
+
+                } else {
+                    // If dataPart is not in expected format, clear fields
+                    jTextField1.setText("");
+                    jTextField2.setText("");
+                    jTextField3.setText("");
+                    jTextField4.setText("");
+                }
+            } else {
+                // If nothing is selected, clear text fields
+                jTextField1.setText("");
+                jTextField2.setText("");
+                jTextField3.setText("");
+                jTextField4.setText("");
             }
         }
     }//GEN-LAST:event_jList1ValueChanged
 
     private void simpanActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_simpanActionPerformed
-        // Simpan (Save)
         String bloodPressure = jTextField1.getText();
         String oxygenLevel = jTextField2.getText();
         String weight = jTextField3.getText();
@@ -427,15 +528,34 @@ public class UI extends javax.swing.JFrame {
             return;
         }
 
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        String currentDate = sdf.format(new Date());
+        if (currentUserId == null) {
+            JOptionPane.showMessageDialog(this, "No user logged in. Cannot save data.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
 
-        HealthData newRecord = new HealthData(currentDate, bloodPressure, oxygenLevel, weight, height);
-        healthRecords.add(newRecord);
-        healthHistoryListModel.addElement(currentDate); // Add date to the list display
+        try {
+            Date currentDate = new Date();
+            Document newHealthRecord = new Document("userId", currentUserId)
+                    .append("date", currentDate)
+                    .append("bloodPressure", bloodPressure)
+                    .append("oxygenLevel", oxygenLevel)
+                    .append("weight", weight)
+                    .append("height", height);
 
-        JOptionPane.showMessageDialog(this, "Data kesehatan berhasil disimpan.", "Sukses", JOptionPane.INFORMATION_MESSAGE);
+            healthRecordsCollection.insertOne(newHealthRecord);
+            JOptionPane.showMessageDialog(this, "Data kesehatan berhasil disimpan.", "Sukses", JOptionPane.INFORMATION_MESSAGE);
 
+            // Refresh the list after saving
+            loadHealthRecords();
+            // Clear input fields
+            jTextField1.setText("");
+            jTextField2.setText("");
+            jTextField3.setText("");
+            jTextField4.setText("");
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Terjadi kesalahan saat menyimpan data kesehatan.", "Error Database", JOptionPane.ERROR_MESSAGE);
+            ex.printStackTrace();
+        }
     }//GEN-LAST:event_simpanActionPerformed
 
     private void buatActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_buatActionPerformed
@@ -482,7 +602,7 @@ public class UI extends javax.swing.JFrame {
         /* Create and display the form */
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
-                new UI().setVisible(true);
+                new login().setVisible(true);
             }
         });
     }
@@ -511,6 +631,36 @@ public class UI extends javax.swing.JFrame {
     private javax.swing.JButton perbarui;
     private javax.swing.JButton simpan;
     // End of variables declaration//GEN-END:variables
+
+    private void loadHealthRecords() {
+        healthHistoryListModel.clear();
+        if (currentUserId == null) {
+            System.err.println("No user ID available to load health records.");
+            return;
+        }
+        try {
+            // Find documents where userId matches the currentUserId
+            for (Document doc : healthRecordsCollection.find(eq("userId", currentUserId)).sort(new Document("date", 1))) {
+                Date recordDate = doc.getDate("date");
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+
+                String bloodPressure = doc.getString("bloodPressure");
+                String oxygenLevel = doc.getString("oxygenLevel");
+                String weight = doc.getString("weight");
+                String height = doc.getString("height");
+
+                // Format the string to include all details
+                healthHistoryListModel.addElement(sdf.format(recordDate) + " - "
+                        + "BP: " + bloodPressure + ", "
+                        + "O2: " + oxygenLevel + ", "
+                        + "W: " + weight + ", "
+                        + "H: " + height);
+            }
+        } catch (Exception e) {
+            System.err.println("Error loading health records from MongoDB: " + e.getMessage());
+            JOptionPane.showMessageDialog(this, "Failed to load health records.", "Error Database", JOptionPane.ERROR_MESSAGE);
+        }
+    }
 
     private void updateLanguage(String language) {
         // This is a basic example. For many languages, use ResourceBundle.

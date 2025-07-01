@@ -4,12 +4,20 @@
  */
 package com.mycompany.healthtrackapp;
 
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import static com.mongodb.client.model.Filters.eq;
+import org.bson.Document;
+import org.bson.types.ObjectId;
 import java.awt.Font;
 import java.awt.FontFormatException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import javax.swing.JOptionPane;
@@ -22,6 +30,8 @@ public class login extends javax.swing.JFrame {
 
     private static final Map<String, String> USERS = new HashMap<>();
     private Font multiLanguageFont; // Variabel untuk menyimpan font
+    private MongoCollection<Document> usersCollection;
+    private static MongoClient mongoClient; // Make it static to be accessible across instances if needed
 
     /**
      * Creates new form login
@@ -42,6 +52,17 @@ public class login extends javax.swing.JFrame {
             System.err.println("Error loading font: " + e.getMessage());
             multiLanguageFont = new Font("SansSerif", Font.PLAIN, 14); // Fallback ke font default
         }
+
+        try {
+            mongoClient = MongoClients.create("mongodb://localhost:27017"); // Your MongoDB connection string
+            MongoDatabase database = mongoClient.getDatabase("UAS"); // Your database name
+            usersCollection = database.getCollection("healthTrack");
+        } catch (Exception e) {
+            System.err.println("Error connecting to MongoDB: " + e.getMessage());
+            JOptionPane.showMessageDialog(this, "Failed to connect to database.", "Error", JOptionPane.ERROR_MESSAGE);
+            // Consider exiting or disabling functionality if DB connection is critical
+        }
+
         initComponents();
         applyFontToComponents();
         updateLanguage("Bahasa Indonesia");
@@ -163,17 +184,25 @@ public class login extends javax.swing.JFrame {
             return;
         }
 
-        if (USERS.containsKey(username)) {
+        // Check if username already exists in MongoDB
+        Document existingUser = usersCollection.find(eq("username", username)).first();
+        if (existingUser != null) {
             JOptionPane.showMessageDialog(this, "Username sudah ada. Silakan pilih username lain.", "Pendaftaran Gagal", JOptionPane.WARNING_MESSAGE);
         } else {
             try {
                 String hashedPassword = hashPassword(password);
-                USERS.put(username, hashedPassword);
+                Document newUser = new Document("username", username)
+                        .append("passwordHash", hashedPassword)
+                        .append("createdAt", new Date()); // Store creation timestamp
+                usersCollection.insertOne(newUser);
                 JOptionPane.showMessageDialog(this, "Akun berhasil dibuat!", "Pendaftaran Berhasil", JOptionPane.INFORMATION_MESSAGE);
                 jTextField1.setText("");
                 jPasswordField1.setText("");
             } catch (NoSuchAlgorithmException ex) {
                 JOptionPane.showMessageDialog(this, "Terjadi kesalahan saat mengenkripsi password.", "Error", JOptionPane.ERROR_MESSAGE);
+                ex.printStackTrace();
+            } catch (Exception ex) { // Catch any MongoDB related exceptions
+                JOptionPane.showMessageDialog(this, "Terjadi kesalahan saat menyimpan akun.", "Error Database", JOptionPane.ERROR_MESSAGE);
                 ex.printStackTrace();
             }
         }
@@ -188,23 +217,29 @@ public class login extends javax.swing.JFrame {
             return;
         }
 
-        if (USERS.containsKey(username)) {
-            try {
-                String hashedPassword = hashPassword(password);
-                if (hashedPassword.equals(USERS.get(username))) {
+        try {
+            String hashedPassword = hashPassword(password);
+            Document userDoc = usersCollection.find(eq("username", username)).first();
+
+            if (userDoc != null) {
+                String storedPasswordHash = userDoc.getString("passwordHash");
+                if (hashedPassword.equals(storedPasswordHash)) {
                     JOptionPane.showMessageDialog(this, "Login Berhasil!", "Selamat Datang", JOptionPane.INFORMATION_MESSAGE);
-                    // Membuka main UI
-                    new UI().setVisible(true);
+                    // Pass the user's ObjectId to the UI to link health records
+                    new UI(userDoc.getObjectId("_id")).setVisible(true);
                     this.dispose();
                 } else {
                     JOptionPane.showMessageDialog(this, "Password salah.", "Login Gagal", JOptionPane.ERROR_MESSAGE);
                 }
-            } catch (NoSuchAlgorithmException ex) {
-                JOptionPane.showMessageDialog(this, "Terjadi kesalahan saat otentikasi.", "Error", JOptionPane.ERROR_MESSAGE);
-                ex.printStackTrace();
+            } else {
+                JOptionPane.showMessageDialog(this, "Username tidak ditemukan.", "Login Gagal", JOptionPane.ERROR_MESSAGE);
             }
-        } else {
-            JOptionPane.showMessageDialog(this, "Username tidak ditemukan.", "Login Gagal", JOptionPane.ERROR_MESSAGE);
+        } catch (NoSuchAlgorithmException ex) {
+            JOptionPane.showMessageDialog(this, "Terjadi kesalahan saat otentikasi.", "Error", JOptionPane.ERROR_MESSAGE);
+            ex.printStackTrace();
+        } catch (Exception ex) { // Catch any MongoDB related exceptions
+            JOptionPane.showMessageDialog(this, "Terjadi kesalahan saat otentikasi dengan database.", "Error Database", JOptionPane.ERROR_MESSAGE);
+            ex.printStackTrace();
         }
     }//GEN-LAST:event_masukActionPerformed
 
