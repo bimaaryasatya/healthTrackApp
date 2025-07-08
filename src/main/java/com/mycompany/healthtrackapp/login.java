@@ -13,14 +13,23 @@ import org.bson.Document;
 import org.bson.types.ObjectId;
 import java.awt.Font;
 import java.awt.FontFormatException;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import javax.swing.JOptionPane;
+import javax.swing.SwingWorker;
+import com.google.gson.Gson;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 
 /**
  *
@@ -61,6 +70,15 @@ public class login extends javax.swing.JFrame {
             System.err.println("Error connecting to MongoDB: " + e.getMessage());
             JOptionPane.showMessageDialog(this, "Failed to connect to database.", "Error", JOptionPane.ERROR_MESSAGE);
             // Consider exiting or disabling functionality if DB connection is critical
+        }
+
+        UserSession session = loadSession();
+        if (session != null) {
+            Document userDoc = usersCollection.find(eq("username", session.getUsername())).first();
+            if (userDoc != null && session.getPasswordHash().equals(userDoc.getString("passwordHash"))) {
+                new UI(userDoc.getObjectId("_id")).setVisible(true);
+                this.dispose();
+            }
         }
 
         initComponents();
@@ -120,15 +138,15 @@ public class login extends javax.swing.JFrame {
                 jTextField1ActionPerformed(evt);
             }
         });
-        jPanel2.add(jTextField1, new org.netbeans.lib.awtextra.AbsoluteConstraints(105, 112, 190, -1));
+        jPanel2.add(jTextField1, new org.netbeans.lib.awtextra.AbsoluteConstraints(100, 120, 190, -1));
 
         jLabel2.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
         jLabel2.setText("Username:");
-        jPanel2.add(jLabel2, new org.netbeans.lib.awtextra.AbsoluteConstraints(40, 120, -1, -1));
+        jPanel2.add(jLabel2, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 120, -1, -1));
 
         jLabel3.setHorizontalAlignment(javax.swing.SwingConstants.TRAILING);
         jLabel3.setText("Password:");
-        jPanel2.add(jLabel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(40, 150, -1, -1));
+        jPanel2.add(jLabel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 150, -1, -1));
 
         masuk.setText("Masuk");
         masuk.addActionListener(new java.awt.event.ActionListener() {
@@ -217,30 +235,53 @@ public class login extends javax.swing.JFrame {
             return;
         }
 
-        try {
-            String hashedPassword = hashPassword(password);
-            Document userDoc = usersCollection.find(eq("username", username)).first();
+        masuk.setEnabled(false);
 
-            if (userDoc != null) {
-                String storedPasswordHash = userDoc.getString("passwordHash");
-                if (hashedPassword.equals(storedPasswordHash)) {
-                    JOptionPane.showMessageDialog(this, "Login Berhasil!", "Selamat Datang", JOptionPane.INFORMATION_MESSAGE);
-                    // Pass the user's ObjectId to the UI to link health records
-                    new UI(userDoc.getObjectId("_id")).setVisible(true);
-                    this.dispose();
-                } else {
-                    JOptionPane.showMessageDialog(this, "Password salah.", "Login Gagal", JOptionPane.ERROR_MESSAGE);
+        new SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() {
+                try {
+                    String hashedPassword = hashPassword(password);
+                    Document userDoc = usersCollection.find(eq("username", username)).first();
+
+                    if (userDoc != null) {
+                        String storedPasswordHash = userDoc.getString("passwordHash");
+                        if (hashedPassword.equals(storedPasswordHash)) {
+                            saveSession(username, hashedPassword); // Simpan session
+
+                            javax.swing.SwingUtilities.invokeLater(() -> {
+                                JOptionPane.showMessageDialog(login.this, "Login Berhasil!", "Selamat Datang", JOptionPane.INFORMATION_MESSAGE);
+                                new UI(userDoc.getObjectId("_id")).setVisible(true);
+                                SessionManager.save(new UserSession(username, hashedPassword));
+                                dispose();
+                            });
+                        } else {
+                            showError("Password salah.");
+                        }
+                    } else {
+                        showError("Username tidak ditemukan.");
+                    }
+                } catch (NoSuchAlgorithmException ex) {
+                    showError("Terjadi kesalahan saat mengenkripsi password.");
+                    ex.printStackTrace();
+                } catch (Exception ex) {
+                    showError("Terjadi kesalahan saat mengakses database.");
+                    ex.printStackTrace();
                 }
-            } else {
-                JOptionPane.showMessageDialog(this, "Username tidak ditemukan.", "Login Gagal", JOptionPane.ERROR_MESSAGE);
+                return null;
             }
-        } catch (NoSuchAlgorithmException ex) {
-            JOptionPane.showMessageDialog(this, "Terjadi kesalahan saat otentikasi.", "Error", JOptionPane.ERROR_MESSAGE);
-            ex.printStackTrace();
-        } catch (Exception ex) { // Catch any MongoDB related exceptions
-            JOptionPane.showMessageDialog(this, "Terjadi kesalahan saat otentikasi dengan database.", "Error Database", JOptionPane.ERROR_MESSAGE);
-            ex.printStackTrace();
-        }
+
+            private void showError(String message) {
+                javax.swing.SwingUtilities.invokeLater(() -> {
+                    JOptionPane.showMessageDialog(login.this, message, "Login Gagal", JOptionPane.ERROR_MESSAGE);
+                });
+            }
+
+            @Override
+            protected void done() {
+                masuk.setEnabled(true); // Re-enable button after processing
+            }
+        }.execute();
     }//GEN-LAST:event_masukActionPerformed
 
     private void jComboBox1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jComboBox1ActionPerformed
@@ -296,6 +337,25 @@ public class login extends javax.swing.JFrame {
     private javax.swing.JTextField jTextField1;
     private javax.swing.JButton masuk;
     // End of variables declaration//GEN-END:variables
+
+    private void saveSession(String username, String passwordHash) {
+        UserSession session = new UserSession(username, passwordHash);
+        try (FileWriter writer = new FileWriter("session.json")) {
+            Gson gson = new Gson();
+            gson.toJson(session, writer);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private UserSession loadSession() {
+        try (FileReader reader = new FileReader("session.json")) {
+            Gson gson = new Gson();
+            return gson.fromJson(reader, UserSession.class);
+        } catch (IOException e) {
+            return null;
+        }
+    }
 
     private String hashPassword(String password) throws NoSuchAlgorithmException {
         MessageDigest md = MessageDigest.getInstance("SHA-256");
